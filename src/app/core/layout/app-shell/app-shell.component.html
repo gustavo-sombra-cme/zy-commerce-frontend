@@ -1,0 +1,24 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/catalog" aria-label="ZippyYum Commerce home">
+      <span class="brand-mark">ZY</span>
+      <span>ZippyYum Commerce</span>
+    </a>
+
+    <nav class="nav" aria-label="Primary navigation">
+      <a routerLink="/catalog" routerLinkActive="active">Catalog</a>
+      <a routerLink="/cart" routerLinkActive="active">Cart <span class="nav-count">{{ cartQuantity() }}</span></a>
+      <a routerLink="/orders" routerLinkActive="active">Orders</a>
+      <a routerLink="/assistant" routerLinkActive="active">Assistant</a>
+    </nav>
+
+    <div class="account">
+      <span class="user-label">{{ userLabel() }}</span>
+      <button type="button" class="logout-button" (click)="logout()">Logout</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>

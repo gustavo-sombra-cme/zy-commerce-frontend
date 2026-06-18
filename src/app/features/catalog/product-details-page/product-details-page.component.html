@@ -1,0 +1,93 @@
+<section class="feature-page">
+  <a class="back-link" routerLink="/catalog">Back to catalog</a>
+
+  @switch (viewModel().status) {
+    @case ('loading') {
+      <zy-page-header title="Product details" subtitle="Loading product information." />
+
+      <div class="state-panel" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Loading product...</p>
+      </div>
+    }
+
+    @case ('notFound') {
+      <zy-page-header title="Product not found" subtitle="The requested product could not be found." />
+
+      <div class="state-panel">
+        <p>No product exists for this ID.</p>
+        <a class="secondary-link" routerLink="/catalog">Browse catalog</a>
+      </div>
+    }
+
+    @case ('error') {
+      <zy-page-header title="Product details" subtitle="Something went wrong." />
+
+      <div class="state-panel error" role="alert">
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="secondary-button" (click)="retry()">Retry</button>
+      </div>
+    }
+
+    @case ('loaded') {
+      @if (product(); as product) {
+        <zy-page-header [title]="product.name" subtitle="Product details" />
+
+        <article class="product-details">
+          @if (product.imageUrl) {
+            <img class="product-image" [src]="product.imageUrl" [alt]="product.name">
+          } @else {
+            <div class="product-image fallback" aria-hidden="true">{{ productInitial(product) }}</div>
+          }
+
+          <div class="details-panel">
+            <div class="product-heading">
+              <h2>{{ product.name }}</h2>
+              <span class="status-badge" [class.inactive]="!product.isActive">
+                {{ product.isActive ? 'Active' : 'Inactive' }}
+              </span>
+            </div>
+
+            @if (product.description) {
+              <p class="description">{{ product.description }}</p>
+            } @else {
+              <p class="description muted">No description is available for this product.</p>
+            }
+
+            <dl class="product-meta">
+              <div>
+                <dt>Product ID</dt>
+                <dd>{{ product.id }}</dd>
+              </div>
+
+              @if (product.sku) {
+                <div>
+                  <dt>SKU</dt>
+                  <dd>{{ product.sku }}</dd>
+                </div>
+              }
+
+              <div>
+                <dt>Price</dt>
+                <dd>
+                  @if (product.price !== null && product.price !== undefined) {
+                    {{ product.price | currency:(product.currencyCode ?? 'USD'):'symbol':'1.2-2' }}
+                  } @else {
+                    Not listed
+                  }
+                </dd>
+              </div>
+            </dl>
+
+            <div class="details-actions">
+              <button type="button" class="primary-button" (click)="addToCart(product)">
+                {{ addedToCart() ? 'Added to cart' : 'Add to cart' }}
+              </button>
+              <a class="secondary-link" routerLink="/cart">View cart</a>
+            </div>
+          </div>
+        </article>
+      }
+    }
+  }
+</section>

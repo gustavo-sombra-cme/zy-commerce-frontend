@@ -1,0 +1,10 @@
+{
+  "apiBaseUrl": "http://localhost:5015",
+  "mcpEndpointUrl": "http://localhost:5015/mcp",
+  "authorizationAllowedOrigins": [
+    "http://localhost:5015"
+  ],
+  "correlationHeaderName": "X-Correlation-ID",
+  "enableMcpAssistant": true,
+  "logLevel": "info"
+}

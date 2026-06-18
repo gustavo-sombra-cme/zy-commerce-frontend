@@ -1,0 +1,95 @@
+<section class="feature-page">
+  @if (status() === 'success') {
+    <zy-page-header title="Order created" subtitle="Your cart has been cleared." />
+
+    <div class="state-panel success">
+      <h2>Confirmation</h2>
+      <dl>
+        <div>
+          <dt>Order</dt>
+          <dd>{{ confirmationId() }}</dd>
+        </div>
+        @if (confirmation()?.status) {
+          <div>
+            <dt>Status</dt>
+            <dd>{{ confirmation()?.status }}</dd>
+          </div>
+        }
+      </dl>
+      @if (confirmationOrderId(); as orderId) {
+        <a class="primary-link" [routerLink]="['/orders', orderId]">View order details</a>
+      }
+      <a class="secondary-link" routerLink="/catalog">Continue shopping</a>
+    </div>
+  } @else {
+    <zy-page-header title="Checkout" subtitle="Create an order from your cart." />
+
+    @if (items().length === 0) {
+      <div class="state-panel">
+        <p>Your cart is empty.</p>
+        <a class="secondary-link" routerLink="/catalog">Browse catalog</a>
+      </div>
+    } @else {
+      <div class="checkout-layout">
+        <div class="checkout-items" aria-label="Checkout items">
+          @for (item of items(); track item.productId) {
+            <article class="checkout-item">
+              <div>
+                <h2>{{ item.snapshot?.name ?? item.productId }}</h2>
+                @if (item.snapshot; as snapshot) {
+                  @if (snapshot.sku) {
+                    <p>SKU {{ snapshot.sku }}</p>
+                  }
+                }
+              </div>
+              <dl>
+                <div>
+                  <dt>Quantity</dt>
+                  <dd>{{ item.quantity }}</dd>
+                </div>
+                <div>
+                  <dt>Display unit price</dt>
+                  <dd>
+                    @if (item.snapshot; as snapshot) {
+                      @if (snapshot.price !== null && snapshot.price !== undefined) {
+                        {{ snapshot.price | currency:(snapshot.currencyCode ?? 'USD'):'symbol':'1.2-2' }}
+                      } @else {
+                        Not listed
+                      }
+                    } @else {
+                      Not listed
+                    }
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          }
+        </div>
+
+        <aside class="checkout-summary" aria-label="Checkout summary">
+          <h2>Review</h2>
+          <dl>
+            <div>
+              <dt>Items</dt>
+              <dd>{{ totalQuantity() }}</dd>
+            </div>
+            <div>
+              <dt>Display subtotal</dt>
+              <dd>{{ displaySubtotal() | currency:'USD':'symbol':'1.2-2' }}</dd>
+            </div>
+          </dl>
+          <p>Snapshot prices are included only because the current backend request requires them. The backend must validate final pricing.</p>
+
+          @if (status() === 'error') {
+            <p class="error-message" role="alert">{{ errorMessage() }}</p>
+          }
+
+          <button type="button" class="primary-button" [disabled]="!canSubmit()" (click)="createOrder()">
+            {{ status() === 'submitting' ? 'Creating order...' : 'Create order' }}
+          </button>
+          <a class="secondary-link" routerLink="/cart">Back to cart</a>
+        </aside>
+      </div>
+    }
+  }
+</section>

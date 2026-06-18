@@ -1,0 +1,100 @@
+<section class="feature-page">
+  <a class="back-link" routerLink="/orders">Back to orders</a>
+
+  @switch (viewModel().status) {
+    @case ('loading') {
+      <zy-page-header title="Order details" subtitle="Loading order information." />
+
+      <div class="state-panel" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Loading order...</p>
+      </div>
+    }
+
+    @case ('notFound') {
+      <zy-page-header title="Order not found" subtitle="The requested order could not be found." />
+
+      <div class="state-panel">
+        <p>No order exists for this ID.</p>
+        <a class="secondary-link" routerLink="/catalog">Continue shopping</a>
+      </div>
+    }
+
+    @case ('error') {
+      <zy-page-header title="Order details" subtitle="Something went wrong." />
+
+      <div class="state-panel error" role="alert">
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="secondary-button" (click)="retry()">Retry</button>
+      </div>
+    }
+
+    @case ('loaded') {
+      @if (order(); as order) {
+        <zy-page-header [title]="'Order ' + displayOrderId(order)" subtitle="Backend order details" />
+
+        <div class="order-layout">
+          <section class="details-panel" aria-label="Order summary">
+            <h2>Summary</h2>
+            <dl>
+              <div>
+                <dt>Order ID</dt>
+                <dd>{{ displayOrderId(order) }}</dd>
+              </div>
+              @if (order.status) {
+                <div>
+                  <dt>Status</dt>
+                  <dd>{{ order.status }}</dd>
+                </div>
+              }
+              @if (order.createdAt) {
+                <div>
+                  <dt>Created</dt>
+                  <dd>{{ order.createdAt | date:'medium' }}</dd>
+                </div>
+              }
+              @if (order.totalAmount !== null && order.totalAmount !== undefined) {
+                <div>
+                  <dt>Total</dt>
+                  <dd>{{ order.totalAmount | currency:'USD':'symbol':'1.2-2' }}</dd>
+                </div>
+              }
+            </dl>
+          </section>
+
+          <section class="items-panel" aria-label="Order items">
+            <h2>Items</h2>
+            @if (order.lines.length) {
+              <div class="order-items">
+                @for (line of order.lines; track line.orderLineId) {
+                  <article class="order-item">
+                    <div>
+                      <h3>{{ line.productName }}</h3>
+                      <p>SKU {{ line.productSku }}</p>
+                    </div>
+                    <dl>
+                      <div>
+                        <dt>Quantity</dt>
+                        <dd>{{ line.quantity }}</dd>
+                      </div>
+                      <div>
+                        <dt>Unit price</dt>
+                        <dd>{{ line.unitPrice | currency:'USD':'symbol':'1.2-2' }}</dd>
+                      </div>
+                      <div>
+                        <dt>Line total</dt>
+                        <dd>{{ line.lineTotal | currency:'USD':'symbol':'1.2-2' }}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                }
+              </div>
+            } @else {
+              <p class="muted">No item details were returned for this order.</p>
+            }
+          </section>
+        </div>
+      }
+    }
+  }
+</section>

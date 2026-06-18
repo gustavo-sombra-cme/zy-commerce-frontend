@@ -1,0 +1,144 @@
+.feature-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.state-panel,
+.checkout-item,
+.checkout-summary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.state-panel {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  justify-content: center;
+  min-height: 10rem;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.state-panel h2,
+.state-panel p,
+.checkout-item h2,
+.checkout-item p,
+.checkout-summary h2,
+.checkout-summary p {
+  margin: 0;
+}
+
+.state-panel dl,
+.checkout-item dl,
+.checkout-summary dl {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  width: 100%;
+}
+
+.state-panel dl div,
+.checkout-item dl div,
+.checkout-summary dl div {
+  display: flex;
+  gap: 0.65rem;
+  justify-content: space-between;
+}
+
+dt {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+dd {
+  margin: 0;
+}
+
+.checkout-layout {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+}
+
+.checkout-items {
+  display: grid;
+  gap: 1rem;
+}
+
+.checkout-item {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+.checkout-item h2,
+.checkout-summary h2 {
+  font-size: 1rem;
+}
+
+.checkout-item p,
+.checkout-summary p {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.checkout-summary {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  position: sticky;
+  top: 5rem;
+}
+
+.error-message {
+  color: #b42318;
+  font-weight: 700;
+}
+
+.primary-button:disabled {
+  background: #a3acb5;
+  cursor: not-allowed;
+}
+
+.primary-link,
+.secondary-link {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-weight: 800;
+  min-height: 2.4rem;
+  padding: 0.5rem 0.85rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.primary-link {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #ffffff;
+}
+
+.primary-link:hover {
+  background: var(--color-accent-strong);
+}
+
+.secondary-link:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+@media (max-width: 820px) {
+  .checkout-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-summary {
+    position: static;
+  }
+}
