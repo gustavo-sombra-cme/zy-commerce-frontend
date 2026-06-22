@@ -1,0 +1,68 @@
+<section class="feature-page">
+  <zy-page-header title="Orders" subtitle="Newest orders first." />
+
+  @switch (viewModel().status) {
+    @case ('loading') {
+      <div class="state-panel" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Loading orders...</p>
+      </div>
+    }
+
+    @case ('empty') {
+      <div class="state-panel">
+        <p>No orders yet.</p>
+        <a class="secondary-link" routerLink="/catalog">Browse catalog</a>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="state-panel error" role="alert">
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="secondary-button" (click)="retry()">Retry</button>
+      </div>
+    }
+
+    @case ('loaded') {
+      @if (ordersPage(); as page) {
+        <div class="orders-toolbar" aria-label="Order history pagination">
+          <p>Showing {{ firstVisibleOrder() }}-{{ lastVisibleOrder() }} of {{ page.totalCount }}</p>
+          <div class="pagination-controls">
+            <button type="button" class="secondary-button" [disabled]="!canGoPrevious()" (click)="goToPreviousPage()">
+              Previous
+            </button>
+            <span>Page {{ page.pageNumber }} of {{ page.totalPages }}</span>
+            <button type="button" class="secondary-button" [disabled]="!canGoNext()" (click)="goToNextPage()">
+              Next
+            </button>
+          </div>
+        </div>
+
+        <section class="orders-list" aria-label="Order history">
+          @for (order of page.items; track order.orderId) {
+            <a class="order-card" [routerLink]="['/orders', order.orderId]" [attr.aria-label]="'View details for order ' + order.orderId">
+              <header>
+                <h2>Order {{ order.orderId }}</h2>
+                <span class="status-pill">{{ order.status }}</span>
+              </header>
+              <dl>
+                <div>
+                  <dt>Created</dt>
+                  <dd>{{ order.createdAt | date:'medium' }}</dd>
+                </div>
+                <div>
+                  <dt>Total</dt>
+                  <dd>{{ order.totalAmount | currency:'USD':'symbol':'1.2-2' }}</dd>
+                </div>
+                <div>
+                  <dt>Lines</dt>
+                  <dd>{{ order.lineCount }}</dd>
+                </div>
+              </dl>
+            </a>
+          }
+        </section>
+      }
+    }
+  }
+</section>

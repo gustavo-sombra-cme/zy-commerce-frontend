@@ -1,0 +1,142 @@
+.feature-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.back-link {
+  color: var(--color-accent-strong);
+  font-weight: 800;
+  justify-self: start;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.state-panel,
+.details-panel,
+.items-panel,
+.order-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.state-panel {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  min-height: 10rem;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.state-panel p,
+.details-panel h2,
+.items-panel h2,
+.order-item h3,
+.order-item p,
+.muted {
+  margin: 0;
+}
+
+.state-panel.error {
+  color: #b42318;
+  flex-direction: column;
+}
+
+.spinner {
+  animation: spin 800ms linear infinite;
+  border: 3px solid #d7dde3;
+  border-radius: 50%;
+  border-top-color: var(--color-accent);
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.order-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+}
+
+.details-panel,
+.items-panel,
+.order-item {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.details-panel h2,
+.items-panel h2,
+.order-item h3 {
+  font-size: 1rem;
+}
+
+dl {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+dl div {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+dt {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.order-items {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.order-item p,
+.muted {
+  color: var(--color-muted);
+}
+
+.secondary-button,
+.secondary-link {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-weight: 800;
+  min-height: 2.4rem;
+  padding: 0.5rem 0.85rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.secondary-button:hover,
+.secondary-link:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 820px) {
+  .order-layout {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,272 @@
+<section class="feature-page">
+  <zy-page-header title="Assistant" subtitle="Read-only catalog and order lookup." />
+
+  <div class="assistant-tabs" role="tablist" aria-label="Assistant views">
+    <button type="button" role="tab" [attr.aria-selected]="activeView() === 'catalog'" [class.active]="activeView() === 'catalog'" (click)="setActiveView('catalog')">
+      Catalog
+    </button>
+    <button type="button" role="tab" [attr.aria-selected]="activeView() === 'orders'" [class.active]="activeView() === 'orders'" (click)="setActiveView('orders')">
+      Orders
+    </button>
+  </div>
+
+  @if (toolsStatus() === 'loading') {
+    <div class="state-panel" role="status">
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Loading assistant tools...</p>
+    </div>
+  } @else if (toolsStatus() === 'error') {
+    <div class="state-panel error" role="alert">
+      <p>{{ toolsErrorMessage() ?? 'Approved assistant tools are unavailable.' }}</p>
+    </div>
+  } @else {
+    @if (activeView() === 'catalog') {
+      <form class="assistant-toolbar" (ngSubmit)="search()">
+        <label class="search-field">
+          <span>Search</span>
+          <input type="search" [formControl]="searchControl" placeholder="Product name or keyword">
+        </label>
+
+        <button type="submit" class="primary-button" [disabled]="!canSearch()">
+          {{ searchViewModel().status === 'loading' ? 'Searching...' : 'Search' }}
+        </button>
+      </form>
+
+      @if (!hasCatalogTools()) {
+        <div class="state-panel error" role="alert">
+          <p>Approved catalog tools are unavailable.</p>
+        </div>
+      } @else {
+        <div class="assistant-layout">
+          <section class="results-panel" aria-label="Catalog search results">
+            @switch (searchViewModel().status) {
+              @case ('idle') {
+                <div class="state-panel">
+                  <p>Search the catalog.</p>
+                </div>
+              }
+
+              @case ('loading') {
+                <div class="state-panel" role="status">
+                  <span class="spinner" aria-hidden="true"></span>
+                  <p>Searching catalog...</p>
+                </div>
+              }
+
+              @case ('error') {
+                <div class="state-panel error" role="alert">
+                  <p>{{ searchErrorMessage() }}</p>
+                  <button type="button" class="secondary-button" (click)="retrySearch()">Retry</button>
+                </div>
+              }
+
+              @case ('empty') {
+                <div class="state-panel">
+                  <p>No products found.</p>
+                </div>
+              }
+
+              @case ('loaded') {
+                @if (searchPage(); as page) {
+                  <div class="results-summary">
+                    <span>Showing {{ firstVisibleItem() }}-{{ lastVisibleItem() }} of {{ page.totalCount }}</span>
+                    <span>Page {{ page.pageNumber }} of {{ page.totalPages }}</span>
+                  </div>
+
+                  <div class="product-list">
+                    @for (product of page.items; track product.productId) {
+                      <article class="product-row">
+                        <div>
+                          <h2>{{ product.name }}</h2>
+                          @if (product.description) {
+                            <p>{{ product.description }}</p>
+                          }
+                        </div>
+                        <dl>
+                          <div>
+                            <dt>SKU</dt>
+                            <dd>{{ product.sku }}</dd>
+                          </div>
+                          <div>
+                            <dt>Status</dt>
+                            <dd>{{ product.isActive ? 'Active' : 'Inactive' }}</dd>
+                          </div>
+                        </dl>
+                        <button type="button" class="secondary-button" (click)="selectProduct(product)">Details</button>
+                      </article>
+                    }
+                  </div>
+
+                  <nav class="pagination" aria-label="Assistant catalog pagination">
+                    <button type="button" class="secondary-button" [disabled]="!canGoPrevious()" (click)="goToPreviousPage()">
+                      Previous
+                    </button>
+                    <button type="button" class="secondary-button" [disabled]="!canGoNext()" (click)="goToNextPage()">
+                      Next
+                    </button>
+                  </nav>
+                }
+              }
+            }
+          </section>
+
+          <aside class="details-panel" aria-label="Catalog product details">
+            @switch (detailViewModel().status) {
+              @case ('idle') {
+                <div class="detail-empty">
+                  <p>Select a product.</p>
+                </div>
+              }
+
+              @case ('loading') {
+                <div class="detail-empty" role="status">
+                  <span class="spinner" aria-hidden="true"></span>
+                  <p>Loading details...</p>
+                </div>
+              }
+
+              @case ('error') {
+                <div class="detail-empty error" role="alert">
+                  <p>{{ detailErrorMessage() }}</p>
+                  <button type="button" class="secondary-button" (click)="retryDetails()">Retry</button>
+                </div>
+              }
+
+              @case ('loaded') {
+                @if (selectedProduct(); as product) {
+                  <h2>{{ product.name }}</h2>
+                  @if (product.description) {
+                    <p class="description">{{ product.description }}</p>
+                  }
+                  <dl>
+                    <div>
+                      <dt>Product ID</dt>
+                      <dd>{{ product.productId }}</dd>
+                    </div>
+                    <div>
+                      <dt>SKU</dt>
+                      <dd>{{ product.sku }}</dd>
+                    </div>
+                    <div>
+                      <dt>Status</dt>
+                      <dd>{{ product.isActive ? 'Active' : 'Inactive' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Created</dt>
+                      <dd>{{ product.createdAt | date:'medium' }}</dd>
+                    </div>
+                    @if (product.updatedAt) {
+                      <div>
+                        <dt>Updated</dt>
+                        <dd>{{ product.updatedAt | date:'medium' }}</dd>
+                      </div>
+                    }
+                  </dl>
+                }
+              }
+            }
+          </aside>
+        </div>
+      }
+    } @else {
+      <form class="assistant-toolbar" (ngSubmit)="lookupOrder()">
+        <label class="search-field">
+          <span>Order ID</span>
+          <input type="text" [formControl]="orderIdControl" placeholder="Order ID">
+        </label>
+
+        <button type="submit" class="primary-button" [disabled]="!canLookupOrder()">
+          {{ orderLookupViewModel().status === 'loading' ? 'Looking up...' : 'Lookup' }}
+        </button>
+      </form>
+
+      @if (!hasOrderLookupTool()) {
+        <div class="state-panel error" role="alert">
+          <p>Order lookup tool is unavailable.</p>
+        </div>
+      } @else {
+        @switch (orderLookupViewModel().status) {
+          @case ('idle') {
+            <div class="state-panel">
+              <p>Enter an order ID.</p>
+            </div>
+          }
+
+          @case ('loading') {
+            <div class="state-panel" role="status">
+              <span class="spinner" aria-hidden="true"></span>
+              <p>Loading order...</p>
+            </div>
+          }
+
+          @case ('notFound') {
+            <div class="state-panel">
+              <p>Order not found.</p>
+              <button type="button" class="secondary-button" (click)="retryOrderLookup()">Retry</button>
+            </div>
+          }
+
+          @case ('error') {
+            <div class="state-panel error" role="alert">
+              <p>{{ orderLookupErrorMessage() }}</p>
+              <button type="button" class="secondary-button" (click)="retryOrderLookup()">Retry</button>
+            </div>
+          }
+
+          @case ('loaded') {
+            @if (selectedOrder(); as order) {
+              <div class="order-result">
+                <section class="summary-panel" aria-label="Order summary">
+                  <h2>Order {{ order.orderId }}</h2>
+                  <dl>
+                    <div>
+                      <dt>Status</dt>
+                      <dd>{{ order.status }}</dd>
+                    </div>
+                    <div>
+                      <dt>Created</dt>
+                      <dd>{{ order.createdAt | date:'medium' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Total</dt>
+                      <dd>{{ order.totalAmount | currency:'USD':'symbol':'1.2-2' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Lines</dt>
+                      <dd>{{ order.lines.length }}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section class="order-lines" aria-label="Order lines">
+                  @for (line of order.lines; track line.orderLineId) {
+                    <article class="order-line">
+                      <div>
+                        <h3>{{ line.productName }}</h3>
+                        <p>SKU {{ line.productSku }}</p>
+                      </div>
+                      <dl>
+                        <div>
+                          <dt>Quantity</dt>
+                          <dd>{{ line.quantity }}</dd>
+                        </div>
+                        <div>
+                          <dt>Unit price</dt>
+                          <dd>{{ line.unitPrice | currency:'USD':'symbol':'1.2-2' }}</dd>
+                        </div>
+                        <div>
+                          <dt>Line total</dt>
+                          <dd>{{ line.lineTotal | currency:'USD':'symbol':'1.2-2' }}</dd>
+                        </div>
+                      </dl>
+                    </article>
+                  }
+                </section>
+              </div>
+            }
+          }
+        }
+      }
+    }
+  }
+</section>

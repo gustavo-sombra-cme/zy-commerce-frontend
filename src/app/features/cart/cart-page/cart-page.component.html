@@ -1,0 +1,101 @@
+<section class="feature-page">
+  <zy-page-header title="Cart" subtitle="Manage saved products before checkout is built." />
+
+  @if (items().length === 0) {
+    <div class="state-panel">
+      <p>Your cart is empty.</p>
+      <a class="secondary-link" routerLink="/catalog">Browse catalog</a>
+    </div>
+  } @else {
+    <div class="cart-layout">
+      <div class="cart-items" aria-label="Cart items">
+        @for (item of items(); track item.productId) {
+          <article class="cart-item">
+            @if (item.snapshot; as snapshot) {
+              @if (snapshot.imageUrl) {
+                <img class="item-image" [src]="snapshot.imageUrl" [alt]="snapshot.name">
+              } @else {
+                <div class="item-image fallback" aria-hidden="true">{{ itemInitial(item) }}</div>
+              }
+            } @else {
+              <div class="item-image fallback" aria-hidden="true">{{ itemInitial(item) }}</div>
+            }
+
+            <div class="item-content">
+              <div class="item-heading">
+                <div>
+                  <h2>{{ item.snapshot?.name ?? 'Product' }}</h2>
+                  @if (item.snapshot; as snapshot) {
+                    @if (snapshot.sku) {
+                      <p>SKU {{ snapshot.sku }}</p>
+                    }
+                  }
+                </div>
+
+                @if (item.snapshot?.isActive === false) {
+                  <span class="status-badge inactive">Inactive</span>
+                }
+              </div>
+
+              <dl class="item-meta">
+                <div>
+                  <dt>Product ID</dt>
+                  <dd>{{ item.productId }}</dd>
+                </div>
+
+                <div>
+                  <dt>Display price</dt>
+                  <dd>
+                    @if (item.snapshot; as snapshot) {
+                      @if (snapshot.price !== null && snapshot.price !== undefined) {
+                        {{ snapshot.price | currency:(snapshot.currencyCode ?? 'USD'):'symbol':'1.2-2' }}
+                      } @else {
+                        Not listed
+                      }
+                    } @else {
+                      Not listed
+                    }
+                  </dd>
+                </div>
+              </dl>
+
+              <div class="item-actions">
+                <label>
+                  <span>Quantity</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    [value]="item.quantity"
+                    (change)="updateQuantity(item, $event)"
+                  >
+                </label>
+
+                <button type="button" class="secondary-button danger" (click)="removeItem(item.productId)">
+                  Remove
+                </button>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+
+      <aside class="cart-summary" aria-label="Cart summary">
+        <h2>Summary</h2>
+        <dl>
+          <div>
+            <dt>Items</dt>
+            <dd>{{ totalQuantity() }}</dd>
+          </div>
+          <div>
+            <dt>Display subtotal</dt>
+            <dd>{{ displaySubtotal() | currency:'USD':'symbol':'1.2-2' }}</dd>
+          </div>
+        </dl>
+        <p>Prices are saved display snapshots only. Final pricing and inventory must be validated by the backend later.</p>
+        <a class="primary-link" routerLink="/orders/checkout">Checkout</a>
+        <button type="button" class="secondary-button" (click)="clearCart()">Clear cart</button>
+      </aside>
+    </div>
+  }
+</section>

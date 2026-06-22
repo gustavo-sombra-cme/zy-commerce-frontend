@@ -1,0 +1,127 @@
+<section class="feature-page">
+  <zy-page-header title="Catalog" subtitle="Find products and compare options." />
+
+  <form class="catalog-toolbar" (submit)="applySearch(); $event.preventDefault()">
+    <label class="search-field">
+      <span>Search</span>
+      <input type="search" [formControl]="searchControl" placeholder="Product name or keyword">
+    </label>
+
+    <button type="submit" class="primary-button">Search</button>
+  </form>
+
+  <div class="catalog-filters" aria-label="Catalog filters">
+    <div class="segmented-control" aria-label="Product status">
+      <button type="button" [class.active]="currentQuery().activeFilter === 'all'" (click)="setActiveFilter('all')">
+        All
+      </button>
+      <button type="button" [class.active]="currentQuery().activeFilter === 'active'" (click)="setActiveFilter('active')">
+        Active
+      </button>
+      <button type="button" [class.active]="currentQuery().activeFilter === 'inactive'" (click)="setActiveFilter('inactive')">
+        Inactive
+      </button>
+    </div>
+
+    <label class="page-size-field">
+      <span>Per page</span>
+      <select [formControl]="pageSizeControl" (change)="setPageSize()">
+        @for (pageSize of pageSizeOptions; track pageSize) {
+          <option [ngValue]="pageSize">{{ pageSize }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @switch (viewModel().status) {
+    @case ('loading') {
+      <div class="state-panel" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Loading products...</p>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="state-panel error" role="alert">
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="secondary-button" (click)="retry()">Retry</button>
+      </div>
+    }
+
+    @case ('loaded') {
+      @if (loadedPage(); as page) {
+        @if (page.items.length === 0) {
+        <div class="state-panel">
+          <p>No products found.</p>
+        </div>
+      } @else {
+        <div class="results-summary">
+          <span>Showing {{ firstVisibleItem() }}-{{ lastVisibleItem() }} of {{ page.totalCount }}</span>
+          <span>Page {{ page.pageNumber }} of {{ page.totalPages }}</span>
+        </div>
+
+        <div class="product-grid">
+          @for (product of page.items; track product.id) {
+            <article class="product-card">
+              <a class="product-card-link" [routerLink]="['/products', product.id]" [attr.aria-label]="'View details for ' + product.name">
+                @if (product.imageUrl) {
+                  <img class="product-image" [src]="product.imageUrl" [alt]="product.name">
+                } @else {
+                  <div class="product-image fallback" aria-hidden="true">{{ productInitial(product) }}</div>
+                }
+
+                <div class="product-content">
+                  <div class="product-heading">
+                    <h2>{{ product.name }}</h2>
+                    <span class="status-badge" [class.inactive]="!product.isActive">
+                      {{ product.isActive ? 'Active' : 'Inactive' }}
+                    </span>
+                  </div>
+
+                  @if (product.description) {
+                    <p class="description">{{ product.description }}</p>
+                  }
+
+                  <dl class="product-meta">
+                    @if (product.sku) {
+                      <div>
+                        <dt>SKU</dt>
+                        <dd>{{ product.sku }}</dd>
+                      </div>
+                    }
+
+                    <div>
+                      <dt>Price</dt>
+                      <dd>
+                        @if (product.price !== null && product.price !== undefined) {
+                          {{ product.price | currency:(product.currencyCode ?? 'USD'):'symbol':'1.2-2' }}
+                        } @else {
+                          Not listed
+                        }
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              </a>
+
+              <button type="button" class="add-button" (click)="addToCart(product)">
+                {{ lastAddedProductId() === product.id ? 'Added to cart' : 'Add to cart' }}
+              </button>
+            </article>
+          }
+        </div>
+
+        <nav class="pagination" aria-label="Catalog pagination">
+          <button type="button" class="secondary-button" [disabled]="!canGoPrevious()" (click)="goToPreviousPage()">
+            Previous
+          </button>
+          <span>Page {{ page.pageNumber }} of {{ page.totalPages }}</span>
+          <button type="button" class="secondary-button" [disabled]="!canGoNext()" (click)="goToNextPage()">
+            Next
+          </button>
+        </nav>
+      }
+      }
+    }
+  }
+</section>
