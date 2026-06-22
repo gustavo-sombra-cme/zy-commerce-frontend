@@ -82,10 +82,19 @@ export class McpHttpClientService implements McpClient {
       return throwError(() => new Error('MCP tool is not approved for this assistant feature.'));
     }
 
-    return this.postRpc<McpToolCallBackendResult<TOutput>>('tools/call', {
+    const params = {
       name: request.toolName,
       arguments: request.input
-    }).pipe(
+    };
+
+    console.debug('[mcp]', {
+      action: 'mcp.callTool.request',
+      method: 'tools/call',
+      toolName: request.toolName,
+      argumentKeys: this.toArgumentKeys(request.input)
+    });
+
+    return this.postRpc<McpToolCallBackendResult<TOutput>>('tools/call', params).pipe(
       map((result) => ({
         content: this.toToolContent(result),
         correlationId: request.correlationId
@@ -100,6 +109,13 @@ export class McpHttpClientService implements McpClient {
   }
 
   private postRpc<TResult>(method: string, params: unknown): Observable<TResult> {
+    console.debug('[mcp]', {
+      action: 'mcp.rpc.post',
+      method,
+      toolName: this.toRpcToolName(params),
+      argumentKeys: this.toRpcArgumentKeys(params)
+    });
+
     return this.http.post(`${this.runtimeConfig.snapshot.mcpEndpointUrl}`, {
       jsonrpc: '2.0',
       id: Date.now(),
@@ -113,6 +129,31 @@ export class McpHttpClientService implements McpClient {
     }).pipe(
       map((response) => this.parseRpcResult<TResult>(response))
     );
+  }
+
+  private toArgumentKeys(input: unknown): readonly string[] {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      return [];
+    }
+
+    return Object.keys(input as Record<string, unknown>);
+  }
+
+  private toRpcToolName(params: unknown): string | undefined {
+    if (!params || typeof params !== 'object' || Array.isArray(params)) {
+      return undefined;
+    }
+
+    const candidate = (params as { readonly name?: unknown }).name;
+    return typeof candidate === 'string' ? candidate : undefined;
+  }
+
+  private toRpcArgumentKeys(params: unknown): readonly string[] {
+    if (!params || typeof params !== 'object' || Array.isArray(params)) {
+      return [];
+    }
+
+    return this.toArgumentKeys((params as { readonly arguments?: unknown }).arguments);
   }
 
   private parseRpcResult<TResult>(response: string): TResult {
