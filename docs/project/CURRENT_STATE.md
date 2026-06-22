@@ -15,6 +15,13 @@ This repository contains a separate Angular frontend for the ZippyYum ecommerce 
 - Global error handling skeleton.
 - MCP adapter interfaces, tool registry skeleton, and confirmation service skeleton.
 
+## Repository Workflow
+
+- Frontend work uses one task, one branch, and one PR.
+- Approved execution tasks start from latest `main` on a new dedicated branch unless the user explicitly says otherwise.
+- Dirty worktrees are preserved; unrelated dirty files must not be included in task branches.
+- Commit, push, and PR creation require explicit developer approval after local verification.
+
 ## Implemented Auth
 
 Auth is REST-only.
