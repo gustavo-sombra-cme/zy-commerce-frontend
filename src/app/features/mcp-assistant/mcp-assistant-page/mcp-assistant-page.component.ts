@@ -1,379 +1,412 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { catchError, map, Observable, of, Subject, switchMap } from 'rxjs';
+import { RouterLink } from '@angular/router';
+import { catchError, EMPTY } from 'rxjs';
 
-import { McpHttpClientService } from '../../../mcp/mcp-http-client.service';
-import {
-  CATALOG_GET_PRODUCT_BY_ID_TOOL,
-  CATALOG_SEARCH_PRODUCTS_TOOL,
-  CatalogGetProductByIdInput,
-  CatalogSearchProductsInput,
-  isApprovedReadonlyCatalogTool,
-  McpCatalogProductDetails,
-  McpCatalogProductsPage,
-  McpCatalogProductSummary
-} from '../../../mcp/mcp-catalog.models';
-import {
-  McpOrderDetails,
-  ORDERS_GET_ORDER_BY_ID_TOOL,
-  OrdersGetOrderByIdInput,
-  isApprovedReadonlyOrderTool
-} from '../../../mcp/mcp-order.models';
-import { McpToolDefinition } from '../../../mcp/mcp-tool.model';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
+import { AssistantApiClient } from '../data/assistant-api.client';
+import { AssistantQueryResponse } from '../data/assistant.models';
 
-const DEFAULT_PAGE_NUMBER = 1;
-const DEFAULT_PAGE_SIZE = 10;
+interface SuggestedQuestionGroup {
+  readonly label: string;
+  readonly questions: readonly string[];
+}
 
-type AssistantView = 'catalog' | 'orders';
+interface UserChatMessage {
+  readonly id: number;
+  readonly role: 'user';
+  readonly question: string;
+}
 
-type SearchViewModel =
-  | {
-    readonly status: 'idle';
-  }
-  | {
-    readonly status: 'loading';
-  }
-  | {
-    readonly status: 'loaded';
-    readonly page: McpCatalogProductsPage;
-  }
-  | {
-    readonly status: 'empty';
-    readonly page: McpCatalogProductsPage;
-  }
-  | {
-    readonly status: 'error';
-    readonly message: string;
-  };
+interface AssistantChatMessage {
+  readonly id: number;
+  readonly role: 'assistant';
+  readonly answer: string;
+  readonly toolsUsed: readonly string[];
+  readonly dataScope: string;
+  readonly unsupported: boolean;
+  readonly richContent: RichAssistantContent | null;
+}
 
-type DetailViewModel =
-  | {
-    readonly status: 'idle';
-  }
-  | {
-    readonly status: 'loading';
-    readonly productId: string;
-  }
-  | {
-    readonly status: 'loaded';
-    readonly product: McpCatalogProductDetails;
-  }
-  | {
-    readonly status: 'error';
-    readonly productId: string;
-    readonly message: string;
-  };
+type ChatMessage = UserChatMessage | AssistantChatMessage;
 
-type OrderLookupViewModel =
+interface OrderCard {
+  readonly orderId: string;
+  readonly status: string;
+  readonly createdAt: string;
+  readonly totalAmount: number;
+  readonly lineCount?: number;
+}
+
+interface ProductCard {
+  readonly id: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly sku?: string;
+  readonly price?: number;
+  readonly currencyCode?: string;
+  readonly isActive?: boolean;
+  readonly quantity?: number;
+  readonly frequency?: number;
+}
+
+interface AnalyticsMetric {
+  readonly label: string;
+  readonly value: string | number;
+  readonly kind: 'currency' | 'number' | 'text';
+}
+
+type RichAssistantContent =
   | {
-    readonly status: 'idle';
-  }
+      readonly kind: 'orders';
+      readonly orders: readonly OrderCard[];
+    }
   | {
-    readonly status: 'loading';
-    readonly orderId: string;
-  }
+      readonly kind: 'products';
+      readonly products: readonly ProductCard[];
+    }
   | {
-    readonly status: 'loaded';
-    readonly order: McpOrderDetails;
-  }
-  | {
-    readonly status: 'notFound';
-    readonly orderId: string;
-  }
-  | {
-    readonly status: 'error';
-    readonly orderId: string;
-    readonly message: string;
-  };
+      readonly kind: 'analytics';
+      readonly title: string;
+      readonly metrics: readonly AnalyticsMetric[];
+    };
 
 @Component({
   selector: 'zy-mcp-assistant-page',
-  imports: [CurrencyPipe, DatePipe, PageHeaderComponent, ReactiveFormsModule],
+  imports: [CurrencyPipe, DatePipe, PageHeaderComponent, ReactiveFormsModule, RouterLink],
   templateUrl: './mcp-assistant-page.component.html',
   styleUrl: './mcp-assistant-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class McpAssistantPageComponent {
   private readonly destroyRef = inject(DestroyRef);
-  private readonly mcpClient = inject(McpHttpClientService);
-  private readonly searchRequests = new Subject<number>();
+  private readonly assistantApi = inject(AssistantApiClient);
+  private nextMessageId = 1;
+  private lastQuestion: string | null = null;
 
-  readonly activeView = signal<AssistantView>('catalog');
-  readonly searchControl = new FormControl('', { nonNullable: true });
-  readonly orderIdControl = new FormControl('', { nonNullable: true });
-  readonly approvedCatalogTools = signal<readonly McpToolDefinition[]>([]);
-  readonly approvedOrderTools = signal<readonly McpToolDefinition[]>([]);
-  readonly toolsStatus = signal<'loading' | 'loaded' | 'error'>('loading');
-  readonly toolsErrorMessage = signal<string | null>(null);
-  readonly currentPageNumber = signal(DEFAULT_PAGE_NUMBER);
-  readonly searchViewModel = signal<SearchViewModel>({
-    status: 'idle'
-  });
-  readonly detailViewModel = signal<DetailViewModel>({
-    status: 'idle'
-  });
-  readonly orderLookupViewModel = signal<OrderLookupViewModel>({
-    status: 'idle'
-  });
-  readonly searchPage = computed(() => {
-    const viewModel = this.searchViewModel();
-    return viewModel.status === 'loaded' || viewModel.status === 'empty' ? viewModel.page : null;
-  });
-  readonly searchErrorMessage = computed(() => {
-    const viewModel = this.searchViewModel();
-    return viewModel.status === 'error' ? viewModel.message : null;
-  });
-  readonly detailErrorMessage = computed(() => {
-    const viewModel = this.detailViewModel();
-    return viewModel.status === 'error' ? viewModel.message : null;
-  });
-  readonly selectedProduct = computed(() => {
-    const viewModel = this.detailViewModel();
-    return viewModel.status === 'loaded' ? viewModel.product : null;
-  });
-  readonly selectedOrder = computed(() => {
-    const viewModel = this.orderLookupViewModel();
-    return viewModel.status === 'loaded' ? viewModel.order : null;
-  });
-  readonly orderLookupErrorMessage = computed(() => {
-    const viewModel = this.orderLookupViewModel();
-    return viewModel.status === 'error' ? viewModel.message : null;
-  });
-  readonly hasOrderLookupTool = computed(() => {
-    const toolNames = this.approvedOrderTools().map((tool) => tool.name);
-    return toolNames.includes(ORDERS_GET_ORDER_BY_ID_TOOL);
-  });
-  readonly hasCatalogTools = computed(() => {
-    const toolNames = this.approvedCatalogTools().map((tool) => tool.name);
-    return toolNames.includes(CATALOG_SEARCH_PRODUCTS_TOOL) && toolNames.includes(CATALOG_GET_PRODUCT_BY_ID_TOOL);
-  });
-  readonly canSearch = computed(() => this.toolsStatus() === 'loaded'
-    && this.hasCatalogTools()
-    && this.searchViewModel().status !== 'loading');
-  readonly canLookupOrder = computed(() => this.toolsStatus() === 'loaded'
-    && this.hasOrderLookupTool()
-    && this.orderLookupViewModel().status !== 'loading');
-  readonly canGoPrevious = computed(() => Boolean(this.searchPage()?.hasPreviousPage));
-  readonly canGoNext = computed(() => Boolean(this.searchPage()?.hasNextPage));
-  readonly firstVisibleItem = computed(() => {
-    const page = this.searchPage();
-
-    if (!page || page.totalCount === 0) {
-      return 0;
+  readonly questionControl = new FormControl('', { nonNullable: true });
+  readonly messages = signal<readonly ChatMessage[]>([]);
+  readonly isLoading = signal(false);
+  readonly errorMessage = signal<string | null>(null);
+  readonly suggestedQuestionGroups: readonly SuggestedQuestionGroup[] = [
+    {
+      label: 'Orders',
+      questions: [
+        'Show my recent orders',
+        'Show my latest order',
+        'What products did I order?',
+        'Which orders contain product 4444?'
+      ]
+    },
+    {
+      label: 'Spending',
+      questions: [
+        'What is my total spend?',
+        'What did I buy most often?'
+      ]
+    },
+    {
+      label: 'Products',
+      questions: [
+        'Find products under 20',
+        'Search products named 4444'
+      ]
     }
+  ];
 
-    return ((page.pageNumber - 1) * page.pageSize) + 1;
-  });
-  readonly lastVisibleItem = computed(() => {
-    const page = this.searchPage();
-
-    if (!page) {
-      return 0;
-    }
-
-    return Math.min(page.pageNumber * page.pageSize, page.totalCount);
-  });
-
-  constructor() {
-    this.loadTools();
-
-    this.searchRequests.pipe(
-      switchMap((pageNumber) => this.runSearch(pageNumber)),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe((viewModel) => this.searchViewModel.set(viewModel));
+  canSubmit(): boolean {
+    return this.questionControl.value.trim().length > 0 && !this.isLoading();
   }
 
-  setActiveView(view: AssistantView): void {
-    this.activeView.set(view);
+  canRetry(): boolean {
+    return Boolean(this.lastQuestion) && !this.isLoading();
   }
 
-  search(): void {
-    if (!this.canSearch()) {
+  submitQuestion(): void {
+    const question = this.questionControl.value.trim();
+
+    if (!question || this.isLoading()) {
       return;
     }
 
-    this.detailViewModel.set({ status: 'idle' });
-    this.searchRequests.next(DEFAULT_PAGE_NUMBER);
+    this.questionControl.setValue('', { emitEvent: false });
+    this.sendQuestion(question, true);
   }
 
-  retrySearch(): void {
-    if (!this.canSearch()) {
+  retryLastQuestion(): void {
+    if (!this.lastQuestion || this.isLoading()) {
       return;
     }
 
-    this.searchRequests.next(this.currentPageNumber());
+    this.sendQuestion(this.lastQuestion, false);
   }
 
-  goToPreviousPage(): void {
-    if (!this.canGoPrevious()) {
+  submitSuggestedQuestion(question: string): void {
+    if (this.isLoading()) {
       return;
     }
 
-    this.searchRequests.next(this.currentPageNumber() - 1);
+    this.questionControl.setValue('', { emitEvent: false });
+    this.sendQuestion(question, true);
   }
 
-  goToNextPage(): void {
-    if (!this.canGoNext()) {
-      return;
+  trackMessage(_: number, message: ChatMessage): number {
+    return message.id;
+  }
+
+  trackQuestion(_: number, question: string): string {
+    return question;
+  }
+
+  trackOrder(_: number, order: OrderCard): string {
+    return order.orderId;
+  }
+
+  trackProduct(_: number, product: ProductCard): string {
+    return product.id;
+  }
+
+  trackMetric(_: number, metric: AnalyticsMetric): string {
+    return metric.label;
+  }
+
+  private sendQuestion(question: string, appendUserMessage: boolean): void {
+    this.lastQuestion = question;
+    this.errorMessage.set(null);
+    this.isLoading.set(true);
+
+    if (appendUserMessage) {
+      this.appendMessage({
+        id: this.nextMessageId++,
+        role: 'user',
+        question
+      });
     }
 
-    this.searchRequests.next(this.currentPageNumber() + 1);
-  }
-
-  selectProduct(product: McpCatalogProductSummary): void {
-    this.detailViewModel.set({
-      status: 'loading',
-      productId: product.productId
-    });
-
-    this.mcpClient.callTool<CatalogGetProductByIdInput, McpCatalogProductDetails>({
-      toolName: CATALOG_GET_PRODUCT_BY_ID_TOOL,
-      input: {
-        productId: product.productId
-      }
-    }).pipe(
-      map((result) => ({
-        status: 'loaded' as const,
-        product: result.content
-      })),
-      catchError(() => of({
-        status: 'error' as const,
-        productId: product.productId,
-        message: 'Product details could not be loaded through MCP. Please try again.'
-      })),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe((viewModel) => this.detailViewModel.set(viewModel));
-  }
-
-  retryDetails(): void {
-    const viewModel = this.detailViewModel();
-
-    if (viewModel.status !== 'error') {
-      return;
-    }
-
-    this.selectProduct({
-      productId: viewModel.productId,
-      sku: '',
-      name: 'Product',
-      description: null,
-      isActive: true,
-      createdAt: ''
-    });
-  }
-
-  lookupOrder(): void {
-    const orderId = this.orderIdControl.value.trim();
-
-    if (!orderId || !this.canLookupOrder()) {
-      return;
-    }
-
-    this.orderLookupViewModel.set({
-      status: 'loading',
-      orderId
-    });
-
-    this.mcpClient.callTool<OrdersGetOrderByIdInput, McpOrderDetails>({
-      toolName: ORDERS_GET_ORDER_BY_ID_TOOL,
-      input: {
-        orderId
-      }
-    }).pipe(
-      map((result) => ({
-        status: 'loaded' as const,
-        order: result.content
-      })),
-      catchError((error: unknown) => of(this.toOrderLookupErrorViewModel(orderId, error))),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe((viewModel) => this.orderLookupViewModel.set(viewModel));
-  }
-
-  retryOrderLookup(): void {
-    const viewModel = this.orderLookupViewModel();
-
-    if (viewModel.status !== 'error' && viewModel.status !== 'notFound') {
-      return;
-    }
-
-    this.orderIdControl.setValue(viewModel.orderId, { emitEvent: false });
-    this.lookupOrder();
-  }
-
-  private loadTools(): void {
-    this.toolsStatus.set('loading');
-    this.toolsErrorMessage.set(null);
-
-    this.mcpClient.listTools().pipe(
-      map((tools) => ({
-        catalogTools: tools.filter((tool) => !tool.mutating && isApprovedReadonlyCatalogTool(tool.name)),
-        orderTools: tools.filter((tool) => !tool.mutating && isApprovedReadonlyOrderTool(tool.name))
-      })),
+    this.assistantApi.query(question).pipe(
+      takeUntilDestroyed(this.destroyRef),
       catchError(() => {
-        this.toolsErrorMessage.set('MCP assistant tools could not be loaded. Please try again.');
-        return of({
-          catalogTools: [],
-          orderTools: []
-        });
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(({ catalogTools, orderTools }) => {
-      this.approvedCatalogTools.set(catalogTools);
-      this.approvedOrderTools.set(orderTools);
-      this.toolsStatus.set(catalogTools.length > 0 || orderTools.length > 0 ? 'loaded' : 'error');
+        this.errorMessage.set('Assistant response could not be loaded. Please try again.');
+        this.isLoading.set(false);
+        return EMPTY;
+      })
+    ).subscribe((response) => {
+      this.appendMessage(this.toAssistantMessage(response));
+      this.isLoading.set(false);
     });
   }
 
-  private runSearch(pageNumber: number): Observable<SearchViewModel> {
-    const searchTerm = this.searchControl.value.trim();
-    this.currentPageNumber.set(pageNumber);
-    this.searchViewModel.set({ status: 'loading' });
-
-    return this.mcpClient.callTool<CatalogSearchProductsInput, McpCatalogProductsPage>({
-      toolName: CATALOG_SEARCH_PRODUCTS_TOOL,
-      input: {
-        searchTerm: searchTerm || null,
-        isActive: true,
-        pageNumber,
-        pageSize: DEFAULT_PAGE_SIZE
-      }
-    }).pipe(
-      map((result) => ({
-        status: result.content.items.length > 0 ? 'loaded' as const : 'empty' as const,
-        page: result.content
-      })),
-      catchError(() => of({
-        status: 'error' as const,
-        message: 'Catalog search could not be completed through MCP. Please try again.'
-      }))
-    );
+  private appendMessage(message: ChatMessage): void {
+    this.messages.update((messages) => [...messages, message]);
   }
 
-  private toOrderLookupErrorViewModel(orderId: string, error: unknown): OrderLookupViewModel {
-    if (error instanceof HttpErrorResponse && error.status === 404) {
-      return {
-        status: 'notFound',
-        orderId
-      };
-    }
-
-    const message = error instanceof Error ? error.message.toLowerCase() : '';
-
-    if (message.includes('not found') || message.includes('404')) {
-      return {
-        status: 'notFound',
-        orderId
-      };
-    }
-
+  private toAssistantMessage(response: AssistantQueryResponse): AssistantChatMessage {
     return {
-      status: 'error',
-      orderId,
-      message: 'Order lookup could not be completed through MCP. Please try again.'
+      id: this.nextMessageId++,
+      role: 'assistant',
+      answer: response.answer,
+      toolsUsed: response.toolsUsed,
+      dataScope: response.dataScope,
+      unsupported: response.unsupported,
+      richContent: buildRichContent(response)
     };
   }
+}
+
+function buildRichContent(response: AssistantQueryResponse): RichAssistantContent | null {
+  if (!response.responseType || response.data === undefined || response.data === null) {
+    return null;
+  }
+
+  switch (response.responseType) {
+    case 'recentOrders':
+    case 'matchingOrders':
+      return buildOrdersContent(response.data);
+    case 'orderedProducts':
+    case 'catalogProducts':
+    case 'catalogProduct':
+      return buildProductsContent(response.responseType, response.data);
+    case 'orderSummaryAnalytics':
+      return buildAnalyticsContent(response.data);
+    case 'productFrequency':
+      return buildProductFrequencyContent(response.data);
+    default:
+      return null;
+  }
+}
+
+function buildOrdersContent(data: unknown): RichAssistantContent | null {
+  const orders = arrayFromData(data, ['orders', 'items'])
+    .map(toOrderCard)
+    .filter((order): order is OrderCard => order !== null);
+
+  return orders.length > 0 ? { kind: 'orders', orders } : null;
+}
+
+function buildProductsContent(responseType: string, data: unknown): RichAssistantContent | null {
+  const products = (responseType === 'catalogProduct' ? [productFromData(data)] : arrayFromData(data, ['products']))
+    .map(toProductCard)
+    .filter((product): product is ProductCard => product !== null);
+
+  return products.length > 0 ? { kind: 'products', products } : null;
+}
+
+function productFromData(data: unknown): unknown {
+  return isRecord(data) ? data['product'] : null;
+}
+
+function buildAnalyticsContent(data: unknown): RichAssistantContent | null {
+  if (!isRecord(data)) {
+    return null;
+  }
+
+  const metrics = [
+    metricFrom(data, 'totalSpend', 'Total spend', 'currency'),
+    metricFrom(data, 'totalAmount', 'Total amount', 'currency'),
+    metricFrom(data, 'orderCount', 'Orders', 'number'),
+    metricFrom(data, 'totalOrders', 'Orders', 'number'),
+    metricFrom(data, 'averageOrderValue', 'Average order value', 'currency'),
+    metricFrom(data, 'productCount', 'Products', 'number')
+  ].filter((metric): metric is AnalyticsMetric => metric !== null);
+
+  return metrics.length > 0 ? { kind: 'analytics', title: 'Order summary', metrics } : null;
+}
+
+function buildProductFrequencyContent(data: unknown): RichAssistantContent | null {
+  if (!isRecord(data)) {
+    return null;
+  }
+
+  const product = asString(data['product'])
+    ?? asString(data['productName'])
+    ?? productNameFromRecord(data['product']);
+  const quantity = asNumber(data['quantity']);
+  const orderCount = asNumber(data['orderCount']);
+
+  if (!product || (quantity === null && orderCount === null)) {
+    return null;
+  }
+
+  const metrics: AnalyticsMetric[] = [
+    { label: 'Product', value: product, kind: 'text' },
+    ...(quantity === null ? [] : [{ label: 'Quantity', value: quantity, kind: 'number' as const }]),
+    ...(orderCount === null ? [] : [{ label: 'Orders', value: orderCount, kind: 'number' as const }])
+  ];
+
+  return { kind: 'analytics', title: 'Product frequency', metrics };
+}
+
+function productNameFromRecord(value: unknown): string | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return asString(value['name'] ?? value['productName']);
+}
+
+function metricFrom(
+  data: Record<string, unknown>,
+  key: string,
+  label: string,
+  kind: AnalyticsMetric['kind']
+): AnalyticsMetric | null {
+  const value = kind === 'text' ? asString(data[key]) : asNumber(data[key]);
+
+  return value === null ? null : { label, value, kind };
+}
+
+function toOrderCard(candidate: unknown): OrderCard | null {
+  if (!isRecord(candidate)) {
+    return null;
+  }
+
+  const orderId = asString(candidate['orderId'] ?? candidate['id']);
+  const status = asString(candidate['status']);
+  const createdAt = asString(candidate['createdAt'] ?? candidate['createdDate']);
+  const totalAmount = asNumber(candidate['totalAmount'] ?? candidate['total']);
+
+  if (!orderId || !status || !createdAt || totalAmount === null) {
+    return null;
+  }
+
+  const lineCount = asNumber(candidate['lineCount']);
+
+  return {
+    orderId,
+    status,
+    createdAt,
+    totalAmount,
+    ...(lineCount === null ? {} : { lineCount })
+  };
+}
+
+function toProductCard(candidate: unknown): ProductCard | null {
+  if (!isRecord(candidate)) {
+    return null;
+  }
+
+  const id = asString(candidate['id'] ?? candidate['productId'] ?? candidate['productName'] ?? candidate['name']);
+  const name = asString(candidate['name'] ?? candidate['productName']);
+
+  if (!id) {
+    return null;
+  }
+
+  const description = asString(candidate['description']);
+  const sku = asString(candidate['sku'] ?? candidate['productSku']);
+  const price = asNumber(candidate['price'] ?? candidate['unitPrice']);
+  const currencyCode = asString(candidate['currencyCode']);
+  const isActive = asBoolean(candidate['isActive']);
+  const quantity = asNumber(candidate['quantity']);
+  const frequency = asNumber(candidate['frequency'] ?? candidate['count'] ?? candidate['orderCount']);
+
+  return {
+    id,
+    name: name ?? id,
+    ...(description ? { description } : {}),
+    ...(sku ? { sku } : {}),
+    ...(price === null ? {} : { price }),
+    ...(currencyCode ? { currencyCode } : {}),
+    ...(isActive === null ? {} : { isActive }),
+    ...(quantity === null ? {} : { quantity }),
+    ...(frequency === null ? {} : { frequency })
+  };
+}
+
+function arrayFromData(data: unknown, keys: readonly string[]): readonly unknown[] {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (!isRecord(data)) {
+    return [];
+  }
+
+  for (const key of keys) {
+    const value = data[key];
+
+    if (Array.isArray(value)) {
+      return value;
+    }
+  }
+
+  return [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function asNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function asBoolean(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
 }

@@ -116,9 +116,20 @@ export class CatalogPageComponent {
   }
 
   applySearch(): void {
+    const searchTerm = this.searchControl.value.trim();
+
+    console.debug('[catalog]', {
+      action: 'catalog.search.submit',
+      searchTerm,
+      searchTermLength: searchTerm.length,
+      pageNumber: DEFAULT_PAGE_NUMBER,
+      pageSize: this.currentQuery().pageSize,
+      activeFilter: this.currentQuery().activeFilter
+    });
+
     this.navigateToQuery({
       ...this.currentQuery(),
-      searchTerm: this.searchControl.value.trim(),
+      searchTerm,
       pageNumber: DEFAULT_PAGE_NUMBER
     });
   }
@@ -184,7 +195,18 @@ export class CatalogPageComponent {
       query
     });
 
-    return this.catalogApi.getProducts(this.toRequest(query)).pipe(
+    const request = this.toRequest(query);
+
+    console.debug('[catalog]', {
+      action: 'catalog.search.loadProducts',
+      searchTerm: request.searchTerm ?? '',
+      searchTermLength: request.searchTerm?.length ?? 0,
+      isActive: request.isActive,
+      pageNumber: request.pageNumber,
+      pageSize: request.pageSize
+    });
+
+    return this.catalogApi.getProducts(request).pipe(
       map((page) => ({
         status: 'loaded' as const,
         query,

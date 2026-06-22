@@ -13,8 +13,20 @@ export class CatalogApiClient {
   private readonly runtimeConfig = inject(RuntimeConfigService);
 
   getProducts(request: CatalogProductsRequest): Observable<CatalogProductsPage> {
+    const params = this.toHttpParams(request);
+
+    console.debug('[catalog]', {
+      action: 'catalog.api.getProducts',
+      searchTerm: params.get('searchTerm') ?? '',
+      searchTermLength: params.get('searchTerm')?.length ?? 0,
+      isActive: params.get('isActive') ?? undefined,
+      pageNumber: params.get('pageNumber'),
+      pageSize: params.get('pageSize'),
+      paramKeys: params.keys()
+    });
+
     return this.http.get<CatalogProductsPageDto>(`${this.runtimeConfig.snapshot.apiBaseUrl}/api/catalog/products`, {
-      params: this.toHttpParams(request)
+      params
     }).pipe(map((response) => this.normalizePage(response, request)));
   }
 

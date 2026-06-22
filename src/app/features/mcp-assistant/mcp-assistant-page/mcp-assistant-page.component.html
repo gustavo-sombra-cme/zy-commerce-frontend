@@ -1,272 +1,200 @@
 <section class="feature-page">
-  <zy-page-header title="Assistant" subtitle="Read-only catalog and order lookup." />
+  <zy-page-header title="Assistant" subtitle="Ask about catalog products and orders." />
 
-  <div class="assistant-tabs" role="tablist" aria-label="Assistant views">
-    <button type="button" role="tab" [attr.aria-selected]="activeView() === 'catalog'" [class.active]="activeView() === 'catalog'" (click)="setActiveView('catalog')">
-      Catalog
-    </button>
-    <button type="button" role="tab" [attr.aria-selected]="activeView() === 'orders'" [class.active]="activeView() === 'orders'" (click)="setActiveView('orders')">
-      Orders
-    </button>
-  </div>
-
-  @if (toolsStatus() === 'loading') {
-    <div class="state-panel" role="status">
-      <span class="spinner" aria-hidden="true"></span>
-      <p>Loading assistant tools...</p>
-    </div>
-  } @else if (toolsStatus() === 'error') {
-    <div class="state-panel error" role="alert">
-      <p>{{ toolsErrorMessage() ?? 'Approved assistant tools are unavailable.' }}</p>
-    </div>
-  } @else {
-    @if (activeView() === 'catalog') {
-      <form class="assistant-toolbar" (ngSubmit)="search()">
-        <label class="search-field">
-          <span>Search</span>
-          <input type="search" [formControl]="searchControl" placeholder="Product name or keyword">
-        </label>
-
-        <button type="submit" class="primary-button" [disabled]="!canSearch()">
-          {{ searchViewModel().status === 'loading' ? 'Searching...' : 'Search' }}
-        </button>
-      </form>
-
-      @if (!hasCatalogTools()) {
-        <div class="state-panel error" role="alert">
-          <p>Approved catalog tools are unavailable.</p>
-        </div>
-      } @else {
-        <div class="assistant-layout">
-          <section class="results-panel" aria-label="Catalog search results">
-            @switch (searchViewModel().status) {
-              @case ('idle') {
-                <div class="state-panel">
-                  <p>Search the catalog.</p>
-                </div>
+  <section class="chat-shell" aria-label="Assistant chat">
+    <details class="question-catalog">
+      <summary>What can I ask?</summary>
+      <div class="question-groups">
+        @for (group of suggestedQuestionGroups; track group.label) {
+          <section class="question-group">
+            <h3>{{ group.label }}</h3>
+            <div class="question-chip-list">
+              @for (question of group.questions; track trackQuestion($index, question)) {
+                <button type="button" class="question-chip" [disabled]="isLoading()" (click)="submitSuggestedQuestion(question)">
+                  {{ question }}
+                </button>
               }
-
-              @case ('loading') {
-                <div class="state-panel" role="status">
-                  <span class="spinner" aria-hidden="true"></span>
-                  <p>Searching catalog...</p>
-                </div>
-              }
-
-              @case ('error') {
-                <div class="state-panel error" role="alert">
-                  <p>{{ searchErrorMessage() }}</p>
-                  <button type="button" class="secondary-button" (click)="retrySearch()">Retry</button>
-                </div>
-              }
-
-              @case ('empty') {
-                <div class="state-panel">
-                  <p>No products found.</p>
-                </div>
-              }
-
-              @case ('loaded') {
-                @if (searchPage(); as page) {
-                  <div class="results-summary">
-                    <span>Showing {{ firstVisibleItem() }}-{{ lastVisibleItem() }} of {{ page.totalCount }}</span>
-                    <span>Page {{ page.pageNumber }} of {{ page.totalPages }}</span>
-                  </div>
-
-                  <div class="product-list">
-                    @for (product of page.items; track product.productId) {
-                      <article class="product-row">
-                        <div>
-                          <h2>{{ product.name }}</h2>
-                          @if (product.description) {
-                            <p>{{ product.description }}</p>
-                          }
-                        </div>
-                        <dl>
-                          <div>
-                            <dt>SKU</dt>
-                            <dd>{{ product.sku }}</dd>
-                          </div>
-                          <div>
-                            <dt>Status</dt>
-                            <dd>{{ product.isActive ? 'Active' : 'Inactive' }}</dd>
-                          </div>
-                        </dl>
-                        <button type="button" class="secondary-button" (click)="selectProduct(product)">Details</button>
-                      </article>
-                    }
-                  </div>
-
-                  <nav class="pagination" aria-label="Assistant catalog pagination">
-                    <button type="button" class="secondary-button" [disabled]="!canGoPrevious()" (click)="goToPreviousPage()">
-                      Previous
-                    </button>
-                    <button type="button" class="secondary-button" [disabled]="!canGoNext()" (click)="goToNextPage()">
-                      Next
-                    </button>
-                  </nav>
-                }
-              }
-            }
+            </div>
           </section>
+        }
+      </div>
+    </details>
 
-          <aside class="details-panel" aria-label="Catalog product details">
-            @switch (detailViewModel().status) {
-              @case ('idle') {
-                <div class="detail-empty">
-                  <p>Select a product.</p>
-                </div>
-              }
-
-              @case ('loading') {
-                <div class="detail-empty" role="status">
-                  <span class="spinner" aria-hidden="true"></span>
-                  <p>Loading details...</p>
-                </div>
-              }
-
-              @case ('error') {
-                <div class="detail-empty error" role="alert">
-                  <p>{{ detailErrorMessage() }}</p>
-                  <button type="button" class="secondary-button" (click)="retryDetails()">Retry</button>
-                </div>
-              }
-
-              @case ('loaded') {
-                @if (selectedProduct(); as product) {
-                  <h2>{{ product.name }}</h2>
-                  @if (product.description) {
-                    <p class="description">{{ product.description }}</p>
-                  }
-                  <dl>
-                    <div>
-                      <dt>Product ID</dt>
-                      <dd>{{ product.productId }}</dd>
-                    </div>
-                    <div>
-                      <dt>SKU</dt>
-                      <dd>{{ product.sku }}</dd>
-                    </div>
-                    <div>
-                      <dt>Status</dt>
-                      <dd>{{ product.isActive ? 'Active' : 'Inactive' }}</dd>
-                    </div>
-                    <div>
-                      <dt>Created</dt>
-                      <dd>{{ product.createdAt | date:'medium' }}</dd>
-                    </div>
-                    @if (product.updatedAt) {
-                      <div>
-                        <dt>Updated</dt>
-                        <dd>{{ product.updatedAt | date:'medium' }}</dd>
-                      </div>
-                    }
-                  </dl>
-                }
-              }
-            }
-          </aside>
-        </div>
-      }
-    } @else {
-      <form class="assistant-toolbar" (ngSubmit)="lookupOrder()">
-        <label class="search-field">
-          <span>Order ID</span>
-          <input type="text" [formControl]="orderIdControl" placeholder="Order ID">
-        </label>
-
-        <button type="submit" class="primary-button" [disabled]="!canLookupOrder()">
-          {{ orderLookupViewModel().status === 'loading' ? 'Looking up...' : 'Lookup' }}
-        </button>
-      </form>
-
-      @if (!hasOrderLookupTool()) {
-        <div class="state-panel error" role="alert">
-          <p>Order lookup tool is unavailable.</p>
+    <div class="message-list">
+      @if (messages().length === 0) {
+        <div class="empty-state">
+          <h2>What would you like to know?</h2>
+          <p>Ask a catalog or order question.</p>
         </div>
       } @else {
-        @switch (orderLookupViewModel().status) {
-          @case ('idle') {
-            <div class="state-panel">
-              <p>Enter an order ID.</p>
-            </div>
-          }
-
-          @case ('loading') {
-            <div class="state-panel" role="status">
-              <span class="spinner" aria-hidden="true"></span>
-              <p>Loading order...</p>
-            </div>
-          }
-
-          @case ('notFound') {
-            <div class="state-panel">
-              <p>Order not found.</p>
-              <button type="button" class="secondary-button" (click)="retryOrderLookup()">Retry</button>
-            </div>
-          }
-
-          @case ('error') {
-            <div class="state-panel error" role="alert">
-              <p>{{ orderLookupErrorMessage() }}</p>
-              <button type="button" class="secondary-button" (click)="retryOrderLookup()">Retry</button>
-            </div>
-          }
-
-          @case ('loaded') {
-            @if (selectedOrder(); as order) {
-              <div class="order-result">
-                <section class="summary-panel" aria-label="Order summary">
-                  <h2>Order {{ order.orderId }}</h2>
-                  <dl>
-                    <div>
-                      <dt>Status</dt>
-                      <dd>{{ order.status }}</dd>
-                    </div>
-                    <div>
-                      <dt>Created</dt>
-                      <dd>{{ order.createdAt | date:'medium' }}</dd>
-                    </div>
-                    <div>
-                      <dt>Total</dt>
-                      <dd>{{ order.totalAmount | currency:'USD':'symbol':'1.2-2' }}</dd>
-                    </div>
-                    <div>
-                      <dt>Lines</dt>
-                      <dd>{{ order.lines.length }}</dd>
-                    </div>
-                  </dl>
-                </section>
-
-                <section class="order-lines" aria-label="Order lines">
-                  @for (line of order.lines; track line.orderLineId) {
-                    <article class="order-line">
-                      <div>
-                        <h3>{{ line.productName }}</h3>
-                        <p>SKU {{ line.productSku }}</p>
-                      </div>
-                      <dl>
-                        <div>
-                          <dt>Quantity</dt>
-                          <dd>{{ line.quantity }}</dd>
-                        </div>
-                        <div>
-                          <dt>Unit price</dt>
-                          <dd>{{ line.unitPrice | currency:'USD':'symbol':'1.2-2' }}</dd>
-                        </div>
-                        <div>
-                          <dt>Line total</dt>
-                          <dd>{{ line.lineTotal | currency:'USD':'symbol':'1.2-2' }}</dd>
-                        </div>
-                      </dl>
-                    </article>
+        @for (message of messages(); track trackMessage($index, message)) {
+          @if (message.role === 'user') {
+            <article class="chat-message user-message">
+              <p>{{ message.question }}</p>
+            </article>
+          } @else {
+            <article class="chat-message assistant-message" [class.unsupported]="message.unsupported">
+              @if (message.unsupported) {
+                <span class="status-label">Unsupported</span>
+              }
+              <p>{{ message.answer }}</p>
+              @if (message.richContent; as richContent) {
+                @switch (richContent.kind) {
+                  @case ('orders') {
+                    <section class="rich-card-grid" aria-label="Orders">
+                      @for (order of richContent.orders; track trackOrder($index, order)) {
+                        <article class="rich-card order-result-card">
+                          <header>
+                            <h3>Order {{ order.orderId }}</h3>
+                            <span class="status-pill">{{ order.status }}</span>
+                          </header>
+                          <dl>
+                            <div>
+                              <dt>Created</dt>
+                              <dd>{{ order.createdAt | date:'medium' }}</dd>
+                            </div>
+                            <div>
+                              <dt>Total</dt>
+                              <dd>{{ order.totalAmount | currency:'USD':'symbol':'1.2-2' }}</dd>
+                            </div>
+                            @if (order.lineCount !== undefined) {
+                              <div>
+                                <dt>Lines</dt>
+                                <dd>{{ order.lineCount }}</dd>
+                              </div>
+                            }
+                          </dl>
+                          <a class="card-link" [routerLink]="['/orders', order.orderId]">View details</a>
+                        </article>
+                      }
+                    </section>
                   }
+                  @case ('products') {
+                    <section class="rich-card-grid" aria-label="Products">
+                      @for (product of richContent.products; track trackProduct($index, product)) {
+                        <article class="rich-card product-result-card">
+                          <div class="product-card-body">
+                            <header>
+                              <h3>{{ product.name }}</h3>
+                              @if (product.isActive !== undefined) {
+                                <span class="status-pill" [class.inactive]="!product.isActive">
+                                  {{ product.isActive ? 'Active' : 'Inactive' }}
+                                </span>
+                              }
+                            </header>
+                            @if (product.description) {
+                              <p class="product-description">{{ product.description }}</p>
+                            }
+                            <dl>
+                              @if (product.sku) {
+                                <div>
+                                  <dt>SKU</dt>
+                                  <dd>{{ product.sku }}</dd>
+                                </div>
+                              }
+                              @if (product.price !== undefined) {
+                                <div>
+                                  <dt>Price</dt>
+                                  <dd>{{ product.price | currency:(product.currencyCode ?? 'USD'):'symbol':'1.2-2' }}</dd>
+                                </div>
+                              }
+                              @if (product.quantity !== undefined) {
+                                <div>
+                                  <dt>Quantity</dt>
+                                  <dd>{{ product.quantity }}</dd>
+                                </div>
+                              }
+                              @if (product.frequency !== undefined) {
+                                <div>
+                                  <dt>Frequency</dt>
+                                  <dd>{{ product.frequency }}</dd>
+                                </div>
+                              }
+                            </dl>
+                          </div>
+                        </article>
+                      }
+                    </section>
+                  }
+                  @case ('analytics') {
+                    <section class="analytics-panel" aria-label="Analytics summary">
+                      <h3>{{ richContent.title }}</h3>
+                      <div class="metric-grid">
+                        @for (metric of richContent.metrics; track trackMetric($index, metric)) {
+                          <article class="metric-card">
+                            <span>{{ metric.label }}</span>
+                            @if (metric.kind === 'currency') {
+                              <strong>{{ metric.value | currency:'USD':'symbol':'1.2-2' }}</strong>
+                            } @else {
+                              <strong>{{ metric.value }}</strong>
+                            }
+                          </article>
+                        }
+                      </div>
+                    </section>
+                  }
+                }
+              }
+
+              @if (message.unsupported) {
+                <section class="inline-suggestions" aria-label="Suggested supported questions">
+                  <h3>Try one of these</h3>
+                  <div class="question-chip-list">
+                    <button type="button" class="question-chip" [disabled]="isLoading()" (click)="submitSuggestedQuestion('Show my recent orders')">
+                      Show my recent orders
+                    </button>
+                    <button type="button" class="question-chip" [disabled]="isLoading()" (click)="submitSuggestedQuestion('What is my total spend?')">
+                      What is my total spend?
+                    </button>
+                    <button type="button" class="question-chip" [disabled]="isLoading()" (click)="submitSuggestedQuestion('Find products under 20')">
+                      Find products under 20
+                    </button>
+                  </div>
                 </section>
-              </div>
-            }
+              }
+
+              <details class="assistant-meta">
+                <summary>Assistant details</summary>
+                <dl>
+                  <div>
+                    <dt>Scope</dt>
+                    <dd>{{ message.dataScope }}</dd>
+                  </div>
+                  <div>
+                    <dt>Tools</dt>
+                    <dd>{{ message.toolsUsed.length > 0 ? message.toolsUsed.join(', ') : 'None' }}</dd>
+                  </div>
+                </dl>
+              </details>
+            </article>
           }
         }
       }
+
+      @if (isLoading()) {
+        <div class="state-row" role="status">
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Thinking...</span>
+        </div>
+      }
+    </div>
+
+    @if (errorMessage(); as message) {
+      <div class="error-row" role="alert">
+        <p>{{ message }}</p>
+        <button type="button" class="secondary-button" [disabled]="!canRetry()" (click)="retryLastQuestion()">Retry</button>
+      </div>
     }
-  }
+
+    <form class="chat-composer" (submit)="submitQuestion(); $event.preventDefault()">
+      <label class="composer-field">
+        <span>Question</span>
+        <textarea [formControl]="questionControl" rows="3" placeholder="Ask about products or orders"></textarea>
+      </label>
+
+      <button type="submit" class="primary-button" [disabled]="!canSubmit()">
+        {{ isLoading() ? 'Sending...' : 'Send' }}
+      </button>
+    </form>
+  </section>
 </section>
