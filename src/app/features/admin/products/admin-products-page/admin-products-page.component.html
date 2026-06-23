@@ -1,0 +1,140 @@
+<section class="feature-page">
+  <div class="page-title-row">
+    <zy-page-header title="Product management" subtitle="Create products and manage catalog availability." />
+    <a class="primary-link" routerLink="/admin/products/new">New product</a>
+  </div>
+
+  @if (actionMessage()) {
+    <p class="admin-alert success" role="status">{{ actionMessage() }}</p>
+  }
+
+  @if (actionError()) {
+    <p class="admin-alert error" role="alert">{{ actionError() }}</p>
+  }
+
+  <form class="admin-toolbar" (submit)="applySearch(); $event.preventDefault()">
+    <label class="search-field">
+      <span>Search</span>
+      <input type="search" [formControl]="searchControl" placeholder="SKU, name, or keyword">
+    </label>
+
+    <button type="submit" class="primary-button">Search</button>
+  </form>
+
+  <div class="admin-filters" aria-label="Admin product filters">
+    <div class="segmented-control" aria-label="Product status">
+      <button type="button" [class.active]="currentQuery().activeFilter === 'all'" (click)="setActiveFilter('all')">
+        All
+      </button>
+      <button type="button" [class.active]="currentQuery().activeFilter === 'active'" (click)="setActiveFilter('active')">
+        Active
+      </button>
+      <button type="button" [class.active]="currentQuery().activeFilter === 'inactive'" (click)="setActiveFilter('inactive')">
+        Inactive
+      </button>
+    </div>
+
+    <label class="page-size-field">
+      <span>Per page</span>
+      <select [formControl]="pageSizeControl" (change)="setPageSize()">
+        @for (pageSize of pageSizeOptions; track pageSize) {
+          <option [ngValue]="pageSize">{{ pageSize }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @switch (viewModel().status) {
+    @case ('loading') {
+      <div class="state-panel" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Loading products...</p>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="state-panel error" role="alert">
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="secondary-button" (click)="retry()">Retry</button>
+      </div>
+    }
+
+    @case ('loaded') {
+      @if (loadedPage(); as page) {
+        @if (page.items.length === 0) {
+          <div class="state-panel">
+            <p>No products found.</p>
+          </div>
+        } @else {
+          <div class="results-summary">
+            <span>Showing {{ firstVisibleItem() }}-{{ lastVisibleItem() }} of {{ page.totalCount }}</span>
+            <span>Page {{ page.pageNumber }} of {{ page.totalPages }}</span>
+          </div>
+
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th scope="col">SKU</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Price</th>
+                  <th scope="col">Currency</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (product of page.items; track product.id) {
+                  <tr>
+                    <td>{{ product.sku || 'Not set' }}</td>
+                    <td>{{ product.name }}</td>
+                    <td class="description-cell">{{ product.description || 'No description' }}</td>
+                    <td>
+                      @if (product.price !== null && product.price !== undefined) {
+                        {{ product.price | currency:(product.currencyCode ?? 'USD'):'symbol':'1.2-2' }}
+                      } @else {
+                        Not listed
+                      }
+                    </td>
+                    <td>{{ product.currencyCode || 'Not set' }}</td>
+                    <td>
+                      <span class="status-badge" [class.inactive]="!product.isActive">
+                        {{ product.isActive ? 'Active' : 'Inactive' }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="row-actions">
+                        <a class="secondary-link" [routerLink]="['/admin/products', product.id, 'edit']">Edit details</a>
+                        <a class="secondary-link" [routerLink]="['/admin/products', product.id, 'edit']" fragment="price">Update price</a>
+                        @if (product.isActive) {
+                          <button type="button" class="danger-button" [disabled]="mutatingProductId() === product.id" (click)="deactivate(product)">
+                            {{ mutatingProductId() === product.id ? 'Deactivating...' : 'Deactivate' }}
+                          </button>
+                        } @else {
+                          <button type="button" class="secondary-button compact" [disabled]="mutatingProductId() === product.id" (click)="reactivate(product)">
+                            {{ mutatingProductId() === product.id ? 'Reactivating...' : 'Reactivate' }}
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <nav class="pagination" aria-label="Admin product pagination">
+            <button type="button" class="secondary-button" [disabled]="!canGoPrevious()" (click)="goToPreviousPage()">
+              Previous
+            </button>
+            <span>Page {{ page.pageNumber }} of {{ page.totalPages }}</span>
+            <button type="button" class="secondary-button" [disabled]="!canGoNext()" (click)="goToNextPage()">
+              Next
+            </button>
+          </nav>
+        }
+      }
+    }
+  }
+</section>

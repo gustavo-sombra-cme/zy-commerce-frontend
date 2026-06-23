@@ -36,6 +36,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/orders/orders.routes').then((m) => m.ORDERS_ROUTES)
       },
       {
+        path: 'admin',
+        loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES)
+      },
+      {
         path: 'assistant',
         loadChildren: () => import('./features/mcp-assistant/mcp-assistant.routes').then((m) => m.MCP_ASSISTANT_ROUTES)
       }

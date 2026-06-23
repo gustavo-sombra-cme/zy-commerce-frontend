@@ -1,0 +1,51 @@
+.feature-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.admin-form {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 1rem;
+  max-width: 680px;
+  padding: 1.25rem;
+}
+
+.form-field textarea {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font: inherit;
+  padding: 0.7rem 0.8rem;
+  resize: vertical;
+}
+
+.form-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.admin-alert {
+  border-radius: 6px;
+  font-weight: 700;
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+}
+
+.admin-alert.error,
+.field-error {
+  color: #b42318;
+}
+
+.admin-alert.error {
+  background: #fdeceb;
+}
+
+.back-link,
+.secondary-link {
+  color: var(--color-accent-strong);
+  font-weight: 800;
+}

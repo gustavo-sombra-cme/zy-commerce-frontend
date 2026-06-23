@@ -1,0 +1,30 @@
+.feature-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.state-panel {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  min-height: 9rem;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.state-panel p {
+  margin: 0;
+}
+
+.state-panel.error {
+  color: #b42318;
+}
+
+.secondary-link {
+  color: var(--color-accent-strong);
+  font-weight: 800;
+}

@@ -1,0 +1,120 @@
+<section class="feature-page">
+  <a class="back-link" routerLink="/admin/products">Back to products</a>
+
+  @switch (viewModel().status) {
+    @case ('loading') {
+      <zy-page-header title="Edit product" subtitle="Loading product information." />
+
+      <div class="state-panel" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Loading product...</p>
+      </div>
+    }
+
+    @case ('notFound') {
+      <zy-page-header title="Product not found" subtitle="The requested product could not be found." />
+
+      <div class="state-panel">
+        <p>No product exists for this ID.</p>
+        <a class="secondary-link" routerLink="/admin/products">Back to products</a>
+      </div>
+    }
+
+    @case ('error') {
+      <zy-page-header title="Edit product" subtitle="Something went wrong." />
+
+      <div class="state-panel error" role="alert">
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="secondary-button" (click)="retry()">Retry</button>
+      </div>
+    }
+
+    @case ('loaded') {
+      @if (product(); as product) {
+        <div class="page-title-row">
+          <zy-page-header [title]="product.name" subtitle="Edit catalog product" />
+          <button type="button" class="secondary-button" (click)="finish()">Done</button>
+        </div>
+
+        @if (actionMessage()) {
+          <p class="admin-alert success" role="status">{{ actionMessage() }}</p>
+        }
+
+        @if (actionError()) {
+          <p class="admin-alert error" role="alert">{{ actionError() }}</p>
+        }
+
+        <section class="summary-panel" aria-label="Product summary">
+          <dl>
+            <div>
+              <dt>Product ID</dt>
+              <dd>{{ product.id }}</dd>
+            </div>
+            <div>
+              <dt>SKU</dt>
+              <dd>{{ product.sku || 'Not set' }}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <span class="status-badge" [class.inactive]="!product.isActive">
+                  {{ product.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt>Current price</dt>
+              <dd>
+                @if (product.price !== null && product.price !== undefined) {
+                  {{ product.price | currency:(product.currencyCode ?? 'USD'):'symbol':'1.2-2' }}
+                } @else {
+                  Not listed
+                }
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <form class="admin-form" [formGroup]="detailsForm" (ngSubmit)="submitDetails()">
+          <h2>Details</h2>
+
+          <label class="form-field">
+            <span>Name</span>
+            <input type="text" autocomplete="off" formControlName="name">
+            @if (detailsForm.controls.name.touched && detailsForm.controls.name.invalid) {
+              <small class="field-error">Name is required.</small>
+            }
+          </label>
+
+          <label class="form-field">
+            <span>Description</span>
+            <textarea rows="5" formControlName="description"></textarea>
+            @if (detailsForm.controls.description.touched && detailsForm.controls.description.invalid) {
+              <small class="field-error">Description is required.</small>
+            }
+          </label>
+
+          <button class="primary-button" type="submit" [disabled]="detailsForm.invalid || detailsSubmitting()">
+            {{ detailsSubmitting() ? 'Saving details...' : 'Save details' }}
+          </button>
+        </form>
+
+        <form id="price" class="admin-form" [formGroup]="priceForm" (ngSubmit)="submitPrice()">
+          <h2>Price</h2>
+
+          <label class="form-field">
+            <span>Price</span>
+            <input type="number" min="0.01" step="0.01" formControlName="price">
+            @if (priceForm.controls.price.touched && priceForm.controls.price.invalid) {
+              <small class="field-error">Enter a positive price.</small>
+            }
+          </label>
+
+          <button class="primary-button" type="submit" [disabled]="priceForm.invalid || priceSubmitting()">
+            {{ priceSubmitting() ? 'Saving price...' : 'Save price' }}
+          </button>
+        </form>
+      }
+    }
+  }
+</section>

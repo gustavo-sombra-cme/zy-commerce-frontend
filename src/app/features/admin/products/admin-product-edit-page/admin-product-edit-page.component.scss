@@ -1,0 +1,160 @@
+.feature-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.page-title-row {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.summary-panel,
+.admin-form,
+.state-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.summary-panel,
+.admin-form {
+  padding: 1.25rem;
+}
+
+.summary-panel dl {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  margin: 0;
+}
+
+.summary-panel div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.summary-panel dt {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.summary-panel dd {
+  margin: 0;
+}
+
+.admin-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 680px;
+}
+
+.admin-form h2 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.form-field textarea {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font: inherit;
+  padding: 0.7rem 0.8rem;
+  resize: vertical;
+}
+
+.state-panel {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  min-height: 9rem;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.state-panel p,
+.admin-alert {
+  margin: 0;
+}
+
+.state-panel.error,
+.admin-alert.error,
+.field-error {
+  color: #b42318;
+}
+
+.admin-alert {
+  border-radius: 6px;
+  font-weight: 700;
+  padding: 0.75rem 0.9rem;
+}
+
+.admin-alert.success {
+  background: #e7f4f1;
+  color: var(--color-accent-strong);
+}
+
+.admin-alert.error {
+  background: #fdeceb;
+}
+
+.status-badge {
+  background: #e7f4f1;
+  border-radius: 999px;
+  color: var(--color-accent-strong);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+}
+
+.status-badge.inactive {
+  background: #f3f4f6;
+  color: var(--color-muted);
+}
+
+.spinner {
+  animation: spin 800ms linear infinite;
+  border: 3px solid #d7dde3;
+  border-radius: 50%;
+  border-top-color: var(--color-accent);
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.secondary-button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-weight: 800;
+  min-height: 2.4rem;
+  padding: 0.5rem 0.85rem;
+}
+
+.secondary-button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+.back-link,
+.secondary-link {
+  color: var(--color-accent-strong);
+  font-weight: 800;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 720px) {
+  .page-title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
