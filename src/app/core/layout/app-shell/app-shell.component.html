@@ -9,6 +9,9 @@
       <a routerLink="/catalog" routerLinkActive="active">Catalog</a>
       <a routerLink="/cart" routerLinkActive="active">Cart <span class="nav-count">{{ cartQuantity() }}</span></a>
       <a routerLink="/orders" routerLinkActive="active">Orders</a>
+      @if (isAdmin()) {
+        <a routerLink="/admin/products" routerLinkActive="active">Admin</a>
+      }
       <a routerLink="/assistant" routerLinkActive="active">Assistant</a>
     </nav>
 

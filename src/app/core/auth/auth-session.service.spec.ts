@@ -49,7 +49,7 @@ describe('AuthSessionService', () => {
 
   it('stores the login access token and loads the current user', async () => {
     authApi.login.mockReturnValue(of({ accessToken: 'jwt-token' }));
-    authApi.getCurrentUser.mockReturnValue(of({ id: 'user-1', email: 'buyer@example.com' }));
+    authApi.getCurrentUser.mockReturnValue(of({ userId: 'user-1', email: 'buyer@example.com', role: 'Customer' }));
 
     const service = TestBed.inject(AuthSessionService);
     const user = await firstValueFrom(service.login({ email: 'buyer@example.com', password: 'secret-password' }));
@@ -58,6 +58,17 @@ describe('AuthSessionService', () => {
     expect(user.email).toBe('buyer@example.com');
     expect(service.user()?.email).toBe('buyer@example.com');
     expect(service.isAuthenticated()).toBe(true);
+    expect(service.isAdmin()).toBe(false);
+  });
+
+  it('exposes an Admin helper after loading the current user', async () => {
+    accessToken = 'jwt-token';
+    authApi.getCurrentUser.mockReturnValue(of({ userId: 'admin-1', email: 'admin@example.com', role: 'Admin' }));
+
+    const service = TestBed.inject(AuthSessionService);
+    await firstValueFrom(service.loadCurrentUser());
+
+    expect(service.isAdmin()).toBe(true);
   });
 
   it('does not store a token or load current user after registration', async () => {

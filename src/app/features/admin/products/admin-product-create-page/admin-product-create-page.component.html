@@ -1,0 +1,49 @@
+<section class="feature-page">
+  <a class="back-link" routerLink="/admin/products">Back to products</a>
+  <zy-page-header title="Create product" subtitle="Add a product to the catalog." />
+
+  @if (errorMessage()) {
+    <p class="admin-alert error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  <form class="admin-form" [formGroup]="form" (ngSubmit)="submit()">
+    <label class="form-field">
+      <span>SKU</span>
+      <input type="text" autocomplete="off" formControlName="sku">
+      @if (form.controls.sku.touched && form.controls.sku.invalid) {
+        <small class="field-error">SKU is required.</small>
+      }
+    </label>
+
+    <label class="form-field">
+      <span>Name</span>
+      <input type="text" autocomplete="off" formControlName="name">
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <small class="field-error">Name is required.</small>
+      }
+    </label>
+
+    <label class="form-field">
+      <span>Description</span>
+      <textarea rows="5" formControlName="description"></textarea>
+      @if (form.controls.description.touched && form.controls.description.invalid) {
+        <small class="field-error">Description is required.</small>
+      }
+    </label>
+
+    <label class="form-field">
+      <span>Price</span>
+      <input type="number" min="0.01" step="0.01" formControlName="price">
+      @if (form.controls.price.touched && form.controls.price.invalid) {
+        <small class="field-error">Enter a positive price.</small>
+      }
+    </label>
+
+    <div class="form-actions">
+      <button class="primary-button" type="submit" [disabled]="form.invalid || submitting()">
+        {{ submitting() ? 'Creating...' : 'Create product' }}
+      </button>
+      <a class="secondary-link" routerLink="/admin/products">Cancel</a>
+    </div>
+  </form>
+</section>

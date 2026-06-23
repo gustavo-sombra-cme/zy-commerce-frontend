@@ -17,6 +17,7 @@ export class AppShellComponent {
   private readonly router = inject(Router);
 
   readonly user = this.authSession.user;
+  readonly isAdmin = this.authSession.isAdmin;
   readonly cartQuantity = this.cartState.totalQuantity;
   readonly userLabel = computed(() => {
     const user = this.user();

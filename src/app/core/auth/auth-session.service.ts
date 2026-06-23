@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, finalize, Observable, of, switchMap, tap, throwError } from 'rxjs';
 
 import { AuthApiClient } from './auth-api.client';
-import { AuthUser, LoginRequest, RegisterRequest, RegisterResult } from './auth.models';
+import { AuthUser, isAdminUser, LoginRequest, RegisterRequest, RegisterResult } from './auth.models';
 import { TOKEN_STORAGE } from './token-storage.provider';
 
 @Injectable({
@@ -21,6 +21,7 @@ export class AuthSessionService {
   readonly isCurrentUserLoading = this.currentUserLoading.asReadonly();
   readonly authError = this.currentAuthError.asReadonly();
   readonly isAuthenticated = computed(() => this.hasStoredToken());
+  readonly isAdmin = computed(() => isAdminUser(this.currentUser()));
 
   login(request: LoginRequest): Observable<AuthUser> {
     this.currentAuthError.set(null);

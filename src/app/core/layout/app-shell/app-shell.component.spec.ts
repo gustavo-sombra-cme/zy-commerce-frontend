@@ -10,7 +10,7 @@ describe('AppShellComponent', () => {
   let fixture: ComponentFixture<AppShellComponent>;
   let cartState: CartStateService;
 
-  beforeEach(() => {
+  function createComponent(isAdmin = false): void {
     globalThis.sessionStorage.clear();
 
     TestBed.configureTestingModule({
@@ -23,6 +23,7 @@ describe('AppShellComponent', () => {
             user: signal({
               email: 'buyer@example.com'
             }),
+            isAdmin: signal(isAdmin),
             logout: vi.fn()
           }
         }
@@ -32,13 +33,15 @@ describe('AppShellComponent', () => {
     cartState = TestBed.inject(CartStateService);
     fixture = TestBed.createComponent(AppShellComponent);
     fixture.detectChanges();
-  });
+  }
 
   afterEach(() => {
     globalThis.sessionStorage.clear();
   });
 
   it('updates the shell cart count when the real cart state changes', () => {
+    createComponent();
+
     expect(fixture.nativeElement.querySelector('.nav-count')?.textContent).toContain('0');
 
     cartState.addItem('product-1', 2, {
@@ -47,5 +50,18 @@ describe('AppShellComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.nav-count')?.textContent).toContain('2');
+  });
+
+  it('shows the Admin nav link for Admin users', () => {
+    createComponent(true);
+
+    expect(fixture.nativeElement.textContent).toContain('Admin');
+    expect(fixture.nativeElement.querySelector('a[href="/admin/products"]')).toBeTruthy();
+  });
+
+  it('hides the Admin nav link for Customer users', () => {
+    createComponent(false);
+
+    expect(fixture.nativeElement.querySelector('a[href="/admin/products"]')).toBeNull();
   });
 });
