@@ -12,8 +12,8 @@ import { CatalogActiveFilter, CatalogProduct, CatalogProductsPage, CatalogProduc
 import { AdminProductsApiClient } from '../data/admin-products-api.client';
 
 const DEFAULT_PAGE_NUMBER = 1;
-const DEFAULT_PAGE_SIZE = 12;
-const PAGE_SIZE_OPTIONS = [12, 24, 48] as const;
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 24, 48] as const;
 
 interface AdminProductsQueryState {
   readonly searchTerm: string;

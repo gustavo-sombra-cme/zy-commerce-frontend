@@ -1,7 +1,6 @@
 <section class="feature-page">
   <div class="page-title-row">
     <zy-page-header title="Product management" subtitle="Create products and manage catalog availability." />
-    <a class="primary-link" routerLink="/admin/products/new">New product</a>
   </div>
 
   @if (actionMessage()) {
@@ -12,17 +11,15 @@
     <p class="admin-alert error" role="alert">{{ actionError() }}</p>
   }
 
-  <form class="admin-toolbar" (submit)="applySearch(); $event.preventDefault()">
+  <form class="admin-toolbar" aria-label="Admin product tools" (submit)="applySearch(); $event.preventDefault()">
     <label class="search-field">
       <span>Search</span>
       <input type="search" [formControl]="searchControl" placeholder="SKU, name, or keyword">
     </label>
 
     <button type="submit" class="primary-button">Search</button>
-  </form>
 
-  <div class="admin-filters" aria-label="Admin product filters">
-    <div class="segmented-control" aria-label="Product status">
+    <div class="segmented-control" role="group" aria-label="Product status">
       <button type="button" [class.active]="currentQuery().activeFilter === 'all'" (click)="setActiveFilter('all')">
         All
       </button>
@@ -42,7 +39,9 @@
         }
       </select>
     </label>
-  </div>
+
+    <a class="primary-link toolbar-create-link" routerLink="/admin/products/new">New product</a>
+  </form>
 
   @switch (viewModel().status) {
     @case ('loading') {
@@ -103,10 +102,10 @@
                         {{ product.isActive ? 'Active' : 'Inactive' }}
                       </span>
                     </td>
-                    <td>
+                    <td class="actions-cell">
                       <div class="row-actions">
-                        <a class="secondary-link" [routerLink]="['/admin/products', product.id, 'edit']">Edit details</a>
-                        <a class="secondary-link" [routerLink]="['/admin/products', product.id, 'edit']" fragment="price">Update price</a>
+                        <a class="secondary-link" [routerLink]="['/admin/products', product.id, 'edit']">Edit</a>
+                        <a class="secondary-link" [routerLink]="['/admin/products', product.id, 'edit']" fragment="price">Price</a>
                         @if (product.isActive) {
                           <button type="button" class="danger-button" [disabled]="mutatingProductId() === product.id" (click)="deactivate(product)">
                             {{ mutatingProductId() === product.id ? 'Deactivating...' : 'Deactivate' }}
